@@ -10,7 +10,7 @@
 #define I2C1_SSD1306_SLAVE_ADDRESS8 0x78                      // 8 bit slave address (write)
 #define I2C_TIMEOUT                 100000
 
-
+//dfhsgfjsfgjkdsfghkj
 
 int OLED_COM (I2C_TypeDef *I2Cx, uint8_t slave_address, uint8_t slave_data){
 	// Sends I2C data over I2Cx:
