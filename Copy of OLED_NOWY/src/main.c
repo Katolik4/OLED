@@ -3,6 +3,7 @@
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_gpio.h>
 #include <stm32f10x_tim.h>
+#include "OLED_SSD1306_128x64_I2C.h"
 
 
 #include <stdio.h>
@@ -119,228 +120,6 @@ void turn_off_error_led_pin(void){
     GPIO_WriteBit(GPIOC, GPIO_Pin_13, 1);
 }
 
-//struct Dupa{
-//	int a;
-//	int *tablica;
-//};
-//
-//int *tablica = [1,2,3,4,5];
-//a = sizeof(tablia) / sizeof(int)
-//dupa = Dupa()
-//dupa.a = a
-//dupa.tablica = &tablica
-//
-//for(int i=0; i<dupa.a; i++){
-//    	send(dupa.tablica[i])
-//    }
-//uint8_t * tab = [bajt bajt]
-//sizeof(tablia) / sizeof(uint8_t)
-
-int i2c_send_command(I2C_TypeDef *I2Cx, uint8_t slave_address, uint8_t slave_data){
-// Sends I2C data over I2Cx:
-//  1) Sends Start Condition. Checks for I2C EV5
-//  2) Sends 7 bit address & checks for EV6
-//  3) Sends 8 bit command byte (0x00) & checks for EV8
-//  4) Sends 8 bits (1 byte) of data & checks for EV8
-//  5) Sends Stop Condition
-    int TimeOut;
-
-    #define COMMAND_BYTE 0x00
-
-    /* Send I2C1 START condition */
-    I2C_GenerateSTART(I2Cx, ENABLE);
-
-    /* Test on I2C1 EV5 and clear it */
-    TimeOut = I2C_TIMEOUT;
-    while(!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_MODE_SELECT))
-    {
-        TimeOut--;
-        if (TimeOut == 0){
-            turn_on_error_led_pin();       // Error LED
-            return 1;
-        }
-    }
-
-    /* Send SSD1306 7 bit slave Address for write. Check to make sure ACK received */
-    I2C_Send7bitAddress(I2Cx, I2C1_SSD1306_SLAVE_ADDRESS8, I2C_Direction_Transmitter);
-
-    //Test on I2C1 EV6 and clear it
-    TimeOut = I2C_TIMEOUT;
-    while(!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
-    {
-        TimeOut--;
-        if (TimeOut == 0){
-            // Send I2C1 STOP Condition
-            I2C_GenerateSTOP(I2Cx, ENABLE);
-            turn_on_error_led_pin();        // Error LED
-
-            return 2;
-        }
-    }
-
-    I2C_SendData(I2Cx, COMMAND_BYTE);
-    while (!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_BYTE_TRANSMITTED)){ // Wait for EV8
-        TimeOut--;
-        if (TimeOut == 0){
-            // Send I2C1 STOP Condition
-            I2C_GenerateSTOP(I2Cx, ENABLE);
-            turn_on_error_led_pin();        // Error LED
-
-            return 2;
-        }
-    }
-
-    I2C_SendData(I2Cx, slave_data);
-			while (!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_BYTE_TRANSMITTED)){ // Wait for EV8
-				TimeOut--;
-				if (TimeOut == 0){
-					// Send I2C1 STOP Condition
-					I2C_GenerateSTOP(I2Cx, ENABLE);
-					turn_on_error_led_pin();        // Error LED
-
-					return 2;
-				}
-			}
-
-    I2C_GenerateSTOP(I2Cx, ENABLE);
-    return 1;
-}
-
-
-
-void ssd1306_i2c_init(I2C_TypeDef *I2Cx, uint8_t ssd1306_slave_address){
-// Sends the init commands to the display
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xAE);						//wylacz wyswietlacz
-
-   // i2c_send_command(I2Cx, ssd1306_slave_address, 0x00);     		// low col = 0
-  //  i2c_send_command(I2Cx, ssd1306_slave_address, 0x10);      		// hi col = 0
-
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0x40);     		// line #0
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0x20);            // Set Memory Addressing Mode
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0x00);            // 0x00 - Horizontal
-
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0x81);            // Set Contrast 0x81
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xCF);			//-||-
-
-
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xA1);            // Segremap - 0xA1
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xC0);            // COMSCAN DEC 0xC8 C0
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xA6);            // Normal Display 0xA6 (Invert A7)
-
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xA4);            // DISPLAY ALL ON RESUME - 0xA4
-
-
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xA8);            // Set Multiplex 0xA8
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0x3F);            // 1/64 Duty Cycle
-
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xD3);            // Set Display Offset 0xD3
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0x0);             	// no offset
-
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xD5);            // Set Display Clk Div 0xD5
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0x80);            // Recommneded resistor ratio 0x80
-
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xD9);            // Set Precharge 0xd9
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xF1);
-
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xDA);            // Set COM Pins0xDA
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0x12);
-
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xDB);            // Set VCOM Detect - 0xDB
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0x40);
-
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0x8D);            // Charge Pump -0x8D
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0x14);
-
-
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xA4);            //--turn on all pixels - A5. Regular mode A4
-    i2c_send_command(I2Cx, ssd1306_slave_address, 0xAF);            //--turn on oled panel - AF
-}
-
-int ssd1306_i2c_draw_buffer(I2C_TypeDef *I2Cx, uint8_t slave_address, uint8_t *buffer_pointer){
-    #define SSD1306_COLUMNADDR  0x21
-    #define SSD1306_PAGEADDR    0x22
-    #define DATA_BYTE           0x40
-
-    int TimeOut;
-
-   i2c_send_command(I2Cx, slave_address, SSD1306_COLUMNADDR);
-   i2c_send_command(I2Cx, slave_address, 0x00);            // Page Start address
-   i2c_send_command(I2Cx, slave_address, 0x7F);            // Page end address
-
-
-
-    i2c_send_command(I2Cx, slave_address, SSD1306_PAGEADDR);
-    i2c_send_command(I2Cx, slave_address, 0x00);            // Page Start address
-    i2c_send_command(I2Cx, slave_address, 0x07);            // Page end address
-
-   i2c_send_command(I2Cx,slave_address, 0x40);
-
-    uint8_t x, y;
-
-
-    /* Send I2C1 START condition */
-    I2C_GenerateSTART(I2Cx, ENABLE);
-
-    /* Test on I2C1 EV5 and clear it */
-    TimeOut = I2C_TIMEOUT;
-    while(!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_MODE_SELECT))
-    {
-        TimeOut--;
-        if (TimeOut == 0){
-            turn_on_error_led_pin();       // Error LED
-            return 1;
-        }
-    }
-
-    /* Send SSD1306 7 bit slave Address for write. Check to make sure ACK received */
-    I2C_Send7bitAddress(I2Cx, slave_address, I2C_Direction_Transmitter);
-
-    //Test on I2C1 EV6 and clear it
-    TimeOut = I2C_TIMEOUT;
-    while(!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
-    {
-        TimeOut--;
-        if (TimeOut == 0){
-            // Send I2C1 STOP Condition
-            I2C_GenerateSTOP(I2Cx, ENABLE);
-            turn_on_error_led_pin();        // Error LED
-
-            return 2;
-        }
-    }
-    TimeOut = I2C_TIMEOUT;
-    I2C_SendData(I2Cx, DATA_BYTE);
-    while (!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_BYTE_TRANSMITTED)){ // Wait for EV8
-        TimeOut--;
-        if (TimeOut == 0){
-            // Send I2C1 STOP Condition
-            I2C_GenerateSTOP(I2Cx, ENABLE);
-            turn_on_error_led_pin();        // Error LED
-
-            return 2;
-        }
-    }
-
-    for(y=0; y<8; y++){
-        for(x=0; x<128; x++){
-            //I2C_SendData(I2Cx, const_global_display_buffer[(128*y)+x]);
-            TimeOut = I2C_TIMEOUT;
-        	I2C_SendData(I2Cx, buffer_pointer[(128*y)+x]);
-            while (!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_BYTE_TRANSMITTED)){ // Wait for EV8
-                TimeOut--;
-                if (TimeOut == 0){
-                    // Send I2C1 STOP Condition
-                    I2C_GenerateSTOP(I2Cx, ENABLE);
-                    turn_on_error_led_pin();        // Error LED
-
-                    return 2;
-                }
-            }
-        }
-    }
-    I2C_GenerateSTOP(I2Cx, ENABLE);
-    return 1;
-}
 
 void ssd1306_clear_display_buffer(uint8_t *buffer_pointer){
 // Clear all bytes of the 128x64 display buffer given by buffer_pointer
@@ -499,26 +278,26 @@ POTW();
 
 
 
-    i2c_send_command(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0xAE);
+    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0xAE);
     delay_ms(500);
     POTW();
-    i2c_send_command(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0xAF);
+    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0xAF);
 
     POTW();
     delay_ms(1000);
 
-    ssd1306_i2c_draw_buffer(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, global_display_buffer);
+    OLED_DRAW_BUFF(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, global_display_buffer);
 
     delay_ms(3000);
     POTW();
 
-    i2c_send_command(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x29);
-    i2c_send_command(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x00);
-    i2c_send_command(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x00);
-    i2c_send_command(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x06);
-    i2c_send_command(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x07);
-    i2c_send_command(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x00);
-    i2c_send_command(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x2F);
+    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x29);
+    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x00);
+    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x00);
+    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x06);
+    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x07);
+    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x00);
+    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x2F);
 
 
 }
