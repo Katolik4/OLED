@@ -15,8 +15,6 @@
 
 
 #define I2C_SPEED                   50000                     /*!< I2C Speed */
-#define I2C1_SSD1306_SLAVE_ADDRESS8 0x78                      // 8 bit slave address (write)
-#define I2C_TIMEOUT                 100000
 
 // Globals
 uint8_t global_display_buffer[1024] = {
@@ -342,33 +340,33 @@ POTW();
 
     /*----- Transmission Phase -----*/
     // Init sequence for 128x64 OLED module
-    OLED_INIT(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8);
+    OLED_INIT(I2C1);
 
 
 
 
-    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0xAE);
+    OLED_COM(I2C1, 0xAE);
     delay_ms(500);
     POTW();
-    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0xAF);
+    OLED_COM(I2C1, 0xAF);
 
     POTW();
     delay_ms(1000);
 
-    OLED_DRAW_BUFF(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, global_display_buffer);
+    OLED_DRAW_BUFF(I2C1, global_display_buffer);
 
     delay_ms(3000);
     POTW();
 
-    OLED_DRAW_BUFF (I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, CANEA);
+    OLED_DRAW_BUFF (I2C1, CANEA);
 
-    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x29);
-    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x00);
-    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x00);
-    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x06);
-    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x07);
-    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x00);
-    OLED_COM(I2C1, I2C1_SSD1306_SLAVE_ADDRESS8, 0x2F);
+    OLED_COM(I2C1, 0x29);
+    OLED_COM(I2C1, 0x00);
+    OLED_COM(I2C1, 0x00);
+    OLED_COM(I2C1, 0x06);
+    OLED_COM(I2C1, 0x07);
+    OLED_COM(I2C1, 0x00);
+    OLED_COM(I2C1, 0x2F);
 
 
 }
